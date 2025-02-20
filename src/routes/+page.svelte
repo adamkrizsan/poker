@@ -12,8 +12,7 @@
         players = [];
         communityCards = [];
         winner = null;
-        const deck: number[] = Array.from({ length: 52 }, (_, i) => i); // Create a deck of 52 unique cards
-
+        const deck: number[] = Array.from({ length: 52 }, (_, i) => i); 
         // Shuffle the deck
         for (let i = deck.length - 1; i > 0; i--) {
             const j = Math.floor(Math.random() * (i + 1));
@@ -22,16 +21,14 @@
 
         // Distribute cards to players
         for (let i = 0; i < 4; i++) {
-            const hand = deck.splice(0, 2); // Take two unique cards from the deck
+            const hand = deck.splice(0, 2); 
             players.push({ id: i, hand });
         }
         
 
-        //distribution of community cards
-        communityCards = deck.splice(0, 5);
-        //console.log("community cards" + communityCards);
         
-        // Determine the winner
+        communityCards = deck.splice(0, 5);
+        
         const winningHand = determine_winner();
         winner = {
             playerId: winningHand.playerId,
@@ -39,7 +36,6 @@
         };
     }
     
-    //function to calculate the winner
     function determine_winner() {
         const handRanks = [
             'Royal Flush',
@@ -79,7 +75,7 @@
                 suitCounts.set(suit, (suitCounts.get(suit) || 0) + 1);
             });
 
-            // Check for flush
+            
             const hasFlush = Array.from(suitCounts.values()).some(count => count >= 5);
 
             // Check for straight
@@ -96,8 +92,8 @@
                 }
             }
 
-            // Special case for Ace-low straight (A,2,3,4,5)
-            if (!hasStraight && ranks.includes(12)) { // 12 is Ace
+            // special case for ace-low straight (A,2,3,4,5)
+            if (!hasStraight && ranks.includes(12)) { // 12 is ace
                 const aceLowStraight = [0, 1, 2, 3, 12];
                 if (aceLowStraight.every(rank => ranks.includes(rank))) {
                     hasStraight = true;
@@ -114,6 +110,8 @@
                     return b[0] - a[0];
                 });
 
+            console.log(rankGroups);
+
             // Get kickers (remaining cards not used in main hand)
             const getKickers = (usedRanks: number[], count: number) => {
                 return ranks
@@ -127,19 +125,19 @@
                 return { rank: 0, mainRanks: [12, 11, 10, 9, 8], kickers: [] }; // Royal Flush
             }
             if (hasFlush && hasStraight) {
-                return { rank: 1, mainRanks: [straightHighCard], kickers: [] }; // Straight Flush
+                return { rank: 1, mainRanks: [straightHighCard], kickers: [] }; // straight Flush
             }
             if (rankGroups[0][1] === 4) {
                 const quads = rankGroups[0][0];
                 const kickers = getKickers([quads], 1);
-                return { rank: 2, mainRanks: [quads], kickers }; // Four of a Kind
+                return { rank: 2, mainRanks: [quads], kickers }; // four of a Kind
             }
             if (rankGroups[0][1] === 3 && rankGroups[1][1] >= 2) {
-                return { rank: 3, mainRanks: [rankGroups[0][0], rankGroups[1][0]], kickers: [] }; // Full House
+                return { rank: 3, mainRanks: [rankGroups[0][0], rankGroups[1][0]], kickers: [] }; // Full house
             }
             if (hasFlush) {
                 const flushCards = ranks.sort((a, b) => b - a).slice(0, 5);
-                return { rank: 4, mainRanks: flushCards, kickers: [] }; // Flush
+                return { rank: 4, mainRanks: flushCards, kickers: [] }; // flush
             }
             if (hasStraight) {
                 return { rank: 5, mainRanks: [straightHighCard], kickers: [] }; // Straight
@@ -147,11 +145,11 @@
             if (rankGroups[0][1] === 3) {
                 const trips = rankGroups[0][0];
                 const kickers = getKickers([trips], 2);
-                return { rank: 6, mainRanks: [trips], kickers }; // Three of a Kind
+                return { rank: 6, mainRanks: [trips], kickers }; // three of a kind
             }
             if (rankGroups[0][1] === 2 && rankGroups[1][1] === 2) {
                 const kickers = getKickers([rankGroups[0][0], rankGroups[1][0]], 1);
-                return { rank: 7, mainRanks: [rankGroups[0][0], rankGroups[1][0]], kickers }; // Two Pair
+                return { rank: 7, mainRanks: [rankGroups[0][0], rankGroups[1][0]], kickers }; // two pairs
             }
             if (rankGroups[0][1] === 2) {
                 const pair = rankGroups[0][0];
@@ -161,7 +159,7 @@
             return { rank: 9, mainRanks: [], kickers: ranks.slice(-5).reverse() }; // High Card
         }
 
-        // Evaluate all players' hands
+        // evaluate all players hands
         const results = players.map(player => {
             const handResult = evaluateHand(player.hand, communityCards);
             return {
@@ -180,25 +178,24 @@
                 return a.handRank - b.handRank;
             }
 
-            // Compare main ranks (the cards that make up the hand)
+           
             for (let i = 0; i < Math.max(a.mainRanks.length, b.mainRanks.length); i++) {
                 const rankA = a.mainRanks[i] || -1;
                 const rankB = b.mainRanks[i] || -1;
                 if (rankA !== rankB) {
-                    return rankB - rankA; // Higher rank wins
+                    return rankB - rankA; //higher rank wins
                 }
             }
 
-            // Compare kickers
             for (let i = 0; i < Math.max(a.kickers.length, b.kickers.length); i++) {
                 const kickerA = a.kickers[i] || -1;
                 const kickerB = b.kickers[i] || -1;
                 if (kickerA !== kickerB) {
-                    return kickerB - kickerA; // Higher kicker wins
+                    return kickerB - kickerA; 
                 }
             }
 
-            return 0; // Complete tie
+            return 0; //tie
         });
 
         return results[0];
