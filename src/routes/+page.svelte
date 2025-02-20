@@ -105,22 +105,60 @@
                 }
             }
 
-            // Evaluate hand
-            const pairs = Array.from(rankCounts.values()).filter(count => count === 2).length;
-            const hasThreeOfAKind = Array.from(rankCounts.values()).some(count => count === 3);
-            const hasFourOfAKind = Array.from(rankCounts.values()).some(count => count === 4);
+            // Get all pairs, three of a kinds, etc. sorted by rank
+            const rankGroups = Array.from(rankCounts.entries())
+                .sort((a, b) => {
+                    // First sort by count (descending)
+                    if (b[1] !== a[1]) return b[1] - a[1];
+                    // Then by rank (descending)
+                    return b[0] - a[0];
+                });
 
-            // Return hand strength and high card
-            if (hasFlush && hasStraight && straightHighCard === 12) return { rank: 0, highCard: 12 }; // Royal Flush
-            if (hasFlush && hasStraight) return { rank: 1, highCard: straightHighCard }; // Straight Flush
-            if (hasFourOfAKind) return { rank: 2, highCard: Array.from(rankCounts.entries()).find(([_, count]) => count === 4)![0] }; // Four of a Kind
-            if (hasThreeOfAKind && pairs > 0) return { rank: 3, highCard: Array.from(rankCounts.entries()).find(([_, count]) => count === 3)![0] }; // Full House
-            if (hasFlush) return { rank: 4, highCard: Math.max(...ranks) }; // Flush
-            if (hasStraight) return { rank: 5, highCard: straightHighCard }; // Straight
-            if (hasThreeOfAKind) return { rank: 6, highCard: Array.from(rankCounts.entries()).find(([_, count]) => count === 3)![0] }; // Three of a Kind
-            if (pairs === 2) return { rank: 7, highCard: Math.max(...Array.from(rankCounts.entries()).filter(([_, count]) => count === 2).map(([rank]) => rank)) }; // Two Pair
-            if (pairs === 1) return { rank: 8, highCard: Array.from(rankCounts.entries()).find(([_, count]) => count === 2)![0] }; // One Pair
-            return { rank: 9, highCard: Math.max(...ranks) }; // High Card
+            // Get kickers (remaining cards not used in main hand)
+            const getKickers = (usedRanks: number[], count: number) => {
+                return ranks
+                    .filter(r => !usedRanks.includes(r))
+                    .sort((a, b) => b - a)
+                    .slice(0, count);
+            };
+
+            // Evaluate hand and return detailed information
+            if (hasFlush && hasStraight && straightHighCard === 12) {
+                return { rank: 0, mainRanks: [12, 11, 10, 9, 8], kickers: [] }; // Royal Flush
+            }
+            if (hasFlush && hasStraight) {
+                return { rank: 1, mainRanks: [straightHighCard], kickers: [] }; // Straight Flush
+            }
+            if (rankGroups[0][1] === 4) {
+                const quads = rankGroups[0][0];
+                const kickers = getKickers([quads], 1);
+                return { rank: 2, mainRanks: [quads], kickers }; // Four of a Kind
+            }
+            if (rankGroups[0][1] === 3 && rankGroups[1][1] >= 2) {
+                return { rank: 3, mainRanks: [rankGroups[0][0], rankGroups[1][0]], kickers: [] }; // Full House
+            }
+            if (hasFlush) {
+                const flushCards = ranks.sort((a, b) => b - a).slice(0, 5);
+                return { rank: 4, mainRanks: flushCards, kickers: [] }; // Flush
+            }
+            if (hasStraight) {
+                return { rank: 5, mainRanks: [straightHighCard], kickers: [] }; // Straight
+            }
+            if (rankGroups[0][1] === 3) {
+                const trips = rankGroups[0][0];
+                const kickers = getKickers([trips], 2);
+                return { rank: 6, mainRanks: [trips], kickers }; // Three of a Kind
+            }
+            if (rankGroups[0][1] === 2 && rankGroups[1][1] === 2) {
+                const kickers = getKickers([rankGroups[0][0], rankGroups[1][0]], 1);
+                return { rank: 7, mainRanks: [rankGroups[0][0], rankGroups[1][0]], kickers }; // Two Pair
+            }
+            if (rankGroups[0][1] === 2) {
+                const pair = rankGroups[0][0];
+                const kickers = getKickers([pair], 3);
+                return { rank: 8, mainRanks: [pair], kickers }; // One Pair
+            }
+            return { rank: 9, mainRanks: [], kickers: ranks.slice(-5).reverse() }; // High Card
         }
 
         // Evaluate all players' hands
@@ -129,17 +167,38 @@
             return {
                 playerId: player.id,
                 handRank: handResult.rank,
-                highCard: handResult.highCard,
+                mainRanks: handResult.mainRanks,
+                kickers: handResult.kickers,
                 handName: handRanks[handResult.rank]
             };
         });
 
-        // Sort by hand rank (lower is better) and high card
+        // Sort by hand rank (lower is better), then by main ranks, then by kickers
         results.sort((a, b) => {
+            // First compare hand ranks
             if (a.handRank !== b.handRank) {
                 return a.handRank - b.handRank;
             }
-            return b.highCard - a.highCard;
+
+            // Compare main ranks (the cards that make up the hand)
+            for (let i = 0; i < Math.max(a.mainRanks.length, b.mainRanks.length); i++) {
+                const rankA = a.mainRanks[i] || -1;
+                const rankB = b.mainRanks[i] || -1;
+                if (rankA !== rankB) {
+                    return rankB - rankA; // Higher rank wins
+                }
+            }
+
+            // Compare kickers
+            for (let i = 0; i < Math.max(a.kickers.length, b.kickers.length); i++) {
+                const kickerA = a.kickers[i] || -1;
+                const kickerB = b.kickers[i] || -1;
+                if (kickerA !== kickerB) {
+                    return kickerB - kickerA; // Higher kicker wins
+                }
+            }
+
+            return 0; // Complete tie
         });
 
         return results[0];

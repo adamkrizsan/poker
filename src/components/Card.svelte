@@ -1,7 +1,6 @@
 <script lang="ts">
     let { cardval } = $props();
     const cardValues = [
-        "A",
         "2",
         "3",
         "4",
@@ -14,6 +13,7 @@
         "J",
         "Q",
         "K",
+        "A"
     ];
     let card = $derived(cardValues[cardval % 13]);
     let suitSVG = 
