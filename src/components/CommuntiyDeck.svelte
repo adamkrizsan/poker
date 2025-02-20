@@ -1,8 +1,6 @@
 <script lang="ts">
     import Card from "./Card.svelte";
-
-    let props = $props();
-    let cards: number[] = props.cards;
+    let { cards } = $props();
 </script>
 
 <div class="flex">
